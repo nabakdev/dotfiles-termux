@@ -1,0 +1,3 @@
+#!/bin/sh
+
+su -c "acc -s c 1000 && accd"
