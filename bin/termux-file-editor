@@ -1,0 +1,104 @@
+#!/bin/bash
+
+FILE=$1
+FILENAME=$(echo "${FILE##*/}")
+# OUTPUT_DIR="/sdcard/Download"
+OUTPUT_DIR="."
+SCALE="-1:1024"
+
+FILE_TYPE=$(file --mime-type -b "${FILE}" | awk -F '/' '{print $1}')
+
+function stabilizeAndCompress {
+  TRF_FILE="${OUTPUT_DIR}/${FILENAME}.trf"
+  ffmpeg -i "${FILE}" \
+    -hide_banner \
+    -loglevel error \
+    -vf "scale=${SCALE},vidstabdetect=result='${TRF_FILE}'" \
+    -f null -
+
+  ffmpeg -i "${FILE}" \
+    -vf "scale=${SCALE},vidstabtransform=smoothing=30:input='${TRF_FILE}',unsharp=5:5:0.8:3:3:0.4"\
+    -c:v libx264 \
+    -loglevel error \
+    -profile:v baseline \
+    -level 3.0 \
+    -pix_fmt yuv420p \
+    -crf 22 \
+    -c:a aac \
+    -b:a 96k \
+    -preset medium \
+    "${OUTPUT_FILE}"
+
+  rm "${TRF_FILE}"
+}
+
+function stabilize {
+  TRF_FILE="${OUTPUT_DIR}/${FILENAME}.trf"
+  ffmpeg -i "${FILE}" \
+    -hide_banner \
+    -loglevel error \
+    -vf "vidstabdetect=result='${TRF_FILE}'" \
+    -f null -
+
+  ffmpeg -i "${FILE}" \
+    -vf "vidstabtransform=smoothing=30:input='${TRF_FILE}',unsharp=5:5:0.8:3:3:0.4"\
+    -loglevel error \
+    -preset medium \
+    "${OUTPUT_FILE}"
+
+  rm "${TRF_FILE}"
+}
+
+function compress {
+  ffmpeg -i $1 \
+    -vf "scale=${SCALE},unsharp=5:5:0.8:3:3:0.4"\
+    -c:v libx264 \
+    -loglevel error \
+    -profile:v baseline \
+    -level 3.0 \
+    -pix_fmt yuv420p \
+    -crf 23 \
+    -c:a aac \
+    -b:a 96k \
+    -preset medium \
+    "${OUTPUT_FILE}"
+}
+
+case $FILE_TYPE in
+  video)
+    echo " 1) Stabilize and Compress"
+    echo " 2) Compress"
+    echo " 3) Stabilize"
+    echo -n "Action: "
+    read ACTION
+
+    case $ACTION in
+      1)
+        OUTPUT_FILE="${OUTPUT_DIR}/sc-${FILENAME}"
+        stabilizeAndCompress
+        ;;
+      2)
+        OUTPUT_FILE="${OUTPUT_DIR}/c-${FILENAME}"
+        compress
+        ;;
+      3)
+        OUTPUT_FILE="${OUTPUT_DIR}/c-${FILENAME}"
+        stabilize
+        ;;
+    esac
+
+    termux-media-scan "${OUTPUT_FILE}"
+    rm "${FILE}"
+
+    termux-share -a view
+    ;;
+  image)
+    echo "File type is image"
+    ;;
+  text)
+    nvim "${FILE}"
+    ;;
+esac
+
+
+# echo $FILE_TYPE
