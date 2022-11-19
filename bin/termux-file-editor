@@ -2,8 +2,8 @@
 
 FILE=$1
 FILENAME=$(echo "${FILE##*/}")
-# OUTPUT_DIR="/sdcard/Download"
-OUTPUT_DIR="."
+OUTPUT_DIR="/sdcard/Download"
+# OUTPUT_DIR="."
 SCALE="-1:1024"
 
 FILE_TYPE=$(file --mime-type -b "${FILE}" | awk -F '/' '{print $1}')
